@@ -2,7 +2,7 @@
 
 Use `avy-custom-action` to create a custom avy action in Emacs.
 
-Example:
+Example ([more examples](#examples)):
 
 ```elisp
 ;; TODO insert good example here
@@ -19,7 +19,7 @@ Creates an interactive function named `name` for the custom avy action defined w
 ### Parameters
 
 - `name`: Name to use for the interactive function that will be created, e.g. `my-avy-action`.
-- `args`: Plist with predefined keywords as properties, see [Usage](#Usage) and [Keywords](#Keywords).
+- `args`: Plist with predefined keywords as properties, see [Usage](#usage) and [Keywords](#keywords).
 
 ## Usage
 ```elisp
@@ -40,12 +40,12 @@ Creates an interactive function named `name` for the custom avy action defined w
 
 #### `:stay`
 
-*[optional]* `t` or `nil`
+*[optional]* `t` or `nil`  
 Set to non false value to restore point after the action.
 
 #### `:pre`
 
-*[optional]* `(sexp)` or `((sexp1) (sexp2) [(sexp3) [... [(sexpN)]]])`
+*[optional]* `(sexp)` or `((sexp1) (sexp2) [(sexp3) [... [(sexpN)]]])`  
 Sexp or list of sexps to run before the actions.
 
 #### `:actions`
@@ -75,7 +75,7 @@ For each action executed the point is stored in variable `pts` (lexical bound) a
 
 #### `:post`
 
-*[optional]* `(sexp)` or `((sexp1) (sexp2) [(sexp3) [... [(sexpN)]]])`
+*[optional]* `(sexp)` or `((sexp1) (sexp2) [(sexp3) [... [(sexpN)]]])`  
 
 Sexp or list of sexps to run after the actions. All points from the
 actions are stored in variable `pts`. You can use this variable in your
