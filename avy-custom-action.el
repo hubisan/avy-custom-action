@@ -29,43 +29,7 @@
 ;;
 ;; Example:
 
-;; copy word
-(avy-custom-action my-avy-mark-lines
-  :stay nil
-  :pre (progn (message "%s" "this is run before"))
-  :actions
-  ((:all-windows t
-		 :pre (message "%s" "this is run before")
-		 :action avy-goto-line
-		 :repeat 2
-		 :post (message "%s" "this is run after")))
-  :post
-  (progn
-    (goto-char (nth 1 pts))
-    (set-mark (nth 0 pts))))
 
-;; mark lines
-(avy-custom-action my-avy-mark-lines
-  :stay nil
-  :pre (progn (message "%s" "this is run before"))
-  :actions
-  ((:all-windows t
-		 :pre (message "%s" "this is run before")
-		 :action avy-goto-line
-		 :repeat 2
-		 :post (message "%s" "this is run after")))
-  :post
-  (progn
-    (goto-char (nth 1 pts))
-    (set-mark (nth 0 pts))))
-
-;; Copy region starting with ( and ending with ) to position and stay
-(avy-custom-action my-copy-region-to-and-stay
-  :actions
-  ((:all-windows nil :action avy-goto-line :post (forward-char) :repeat 2))
-  :post
-  ((goto-char (nth 0 pts))
-   (set-mark (nth pts))))
 
 ;;; Code:
 (require 'avy)
@@ -166,8 +130,48 @@ Example:
 	 (progn
 	   (when stay (goto-char start-point)))))))
 
+(provide 'avy-custom-action)
+
+;; Local Variables:
+;; indent-tabs-mode: nil
 ;; End:
 
-(provide 'avy-custom-action)
+;; copy word
+(avy-custom-action my-avy-mark-lines
+  :stay nil
+  :pre buffer-file-name
+  :actions
+  ((:all-windows t
+		 :pre (message "%s" "this is run before")
+		 :action avy-goto-line
+		 :repeat 2
+		 :post (message "%s" "this is run after")))
+  :post
+  (progn
+    (goto-char (nth 1 pts))
+    (set-mark (nth 0 pts))))
+
+;; mark lines
+(avy-custom-action my-avy-mark-lines
+  :stay nil
+  :pre (progn (message "%s" "this is run before"))
+  :actions
+  ((:all-windows t
+		 :pre (message "%s" "this is run before")
+		 :action avy-goto-line
+		 :repeat 2
+		 :post (message "%s" "this is run after")))
+  :post
+  (progn
+    (goto-char (nth 1 pts))
+    (set-mark (nth 0 pts))))
+
+;; Copy region starting with ( and ending with ) to position and stay
+(avy-custom-action my-copy-region-to-and-stay
+  :actions
+  ((:all-windows nil :action avy-goto-line :post (forward-char) :repeat 2))
+  :post
+  ((goto-char (nth 0 pts))
+   (set-mark (nth pts))))
 
 ;;; avy-custom-action.el ends here
