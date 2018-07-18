@@ -25,14 +25,47 @@
 
 ;;; Commentary:
 ;;
-;; This package lets you create custom avy actions.
+;; Easily create custom avy actions.
 ;;
 ;; Example:
 
-
-
 ;;; Code:
 (require 'avy)
+
+;;; CUSTOMIZATION
+
+(defgroup avy-custom-action nil
+  "A use-package declaration for simplifying your `.emacs'."
+  :group 'convenience)
+
+(defcustom avy-custom-action-stay nil
+  "Default value to use for :stay keyword."
+  :type 'boolean
+  :group 'avy-custom-action)
+
+(defcustom avy-custom-action-actions-all-windows t
+  "Default value to use for `avy-all-windows' :all-windows keyword in actions."
+  :type
+  '(choice
+    (const :tag "All Frames" all-frames)
+    (const :tag "This Frame" t)
+    (const :tag "This Window" nil)))
+
+;;; VARIABLES
+
+(defconst avy-custom-action-keywords
+  '(:pre :actions :post :stay)
+  "Main keywords to process in order defined in this list.")
+
+(defconst avy-custom-action-actions-keywords-defaults
+  '((:all-windows nil)
+    (:pre nil)
+    (:action nil)
+    (:repeat 1)
+    (:post nil))
+  "Actions keywords to process in order defined in this list.")
+
+;;; HELPER FUNCTIONS
 
 (defun avy-custom-action--normalize-list (keyword args)
   "Normalize ARGS for KEYWORD that want a sexp or list of sexps as ARGS."
@@ -43,29 +76,108 @@
 	args)
     (error (concat (symbol-name keyword) " wants a sexp or list of sexps."))))
 
+;;; PROCESS KEYWORDS
+
+(defun avy-custom-action--process-main-keywords (args)
+  "Process each valid keyword found in plist ARGS."
+  
+  ;; for each keyword in avy-custom-action-keywords
+  ;;   process keyword
+  ;;   if :actions proess
+  )
+
+(defun avy-custom-action--process-main-keywords (args)
+  "Process each valid keyword found in plist ARGS."
+  
+  ;; for each keyword in avy-custom-action-keywords
+  ;;   process keyword
+  ;;   if :actions proess
+  
+
+  )
+
+;;; KEYWORD HANDLERS
+
+;;;; :pre
+
+(defun avy-custom-action--handler:pre (arg)
+  "Handler :pre keyword ARGuments.
+And return "
+  )
+
+;;;; :actions
+
+(defun avy-custom-action--handler:actions (arg)
+  )
+
+;;;; :actions :all-windows
+
+(defun avy-custom-action--handler:actions:all-windows (arg)
+  )
+
+;;;; :action :pre
+
+(defun avy-custom-action--handler:actions:pre (arg)
+  )
+
+;;;; :actions :action
+
+(defun avy-custom-action--handler:actions:action (arg)
+  )
+
+;;;; :actions :repeat
+
+(defun avy-custom-action--handler:actions:action (arg)
+  )
+
+;;;; :actions :post
+
+(defun avy-custom-action--handler:actions:action (arg)
+  )
+
+;;;; :post
+
+(defun avy-custom-action--handler:pre (arg)
+  )
+
+;;;; :stay
+
+(defun avy-custom-action--handler:stay (arg)
+  )
+
+;;; MAIN
+
 ;;;###autoload
 (defmacro avy-custom-action (name &rest args)
   "Define a custom avy action as interactive function with NAME.
 
-For full documentation, please see the README file that came with
+For full documentation, please see the README.md file that came with
 this file.
 
-Args:
+Parameters:
   NAME Name to use for the action.
   ARGS Property list, see Usage and Keywords.
 
 Usage:
   (avy-custom-action action-name
-     [:keyword option]...)
+    [:stay t | nil]
+    [:pre (sexp) | ((sexp1) (sexp2) [(sexp3) [... [(sexpN)]]])]
+    :actions
+    (([:all-windows t | nil | 'all-frames]
+      [:pre (...) | ((...) (...) ...)]
+      :action avy-goto-function-name | regexp
+      [:repeat number]
+      [:post (sexp) | ((sexp1) (sexp2) [(sexp3) [... [(sexpN)]]])])
+     [(action2) [... [(actionN)]]])
+    [:post (sexp) | ((sexp1) (sexp2) [(sexp3) [... [(sexpN)]]])])
 
 Keywords:
-  :stay          Set to t to restore point after the action.
   :pre           Sexp or list of sexps to run before the actions.
   :actions       A list of avy actions with following keywords for each:
-                 :all-windows   Change `avy-all-windows' temporarily for the action.
+                 :all-windows   Change `avy-all-windows' temporarily.
                  :pre           Sexp or list of sexp run before action.
-                 :action        Name of a avy-goto function or a regex to use with
-                                `avy--generic-jump'.
+                 :action        Name of a avy-goto function or a regex to use
+                                with `avy--generic-jump'.
                  :repeat        Number of times the action should be repeated.
                  :post          Sexp or list of sepx run after action.
                  For each action executed the point is stored in
@@ -75,17 +187,21 @@ Keywords:
   :post          Sexp or list of sexps to run after the actions.
                  All points from the actions are stored in variable pts.
                  You can use this variable in your sexp e.g. (car pts)
+  :stay          Set to t to restore point after the action.
 
 Example:
-  (avy-custom-action my-avy-mark-lines
-"
-  (declare (debug t)
-           (indent defun))
+  (avy-custom-action my-avy-mark-lines"
 
-  (let ((stay (plist-get args :stay))
-	(pre (plist-get args :pre))
+  (declare (debug t)
+           (indent 1))
+
+  (let ((pre (plist-get args :pre))
 	(actions (plist-get args :actions))
-	(post (plist-get args :post)))
+	(post (plist-get args :post))
+        (stay (plist-get args :stay)))
+
+    (unless actions
+      (error ":actions keyword is mandatory")
 
     ;; Normalize keywords that want a sexp or list of sexps
     (when pre
@@ -97,8 +213,8 @@ Example:
     `(defun ,name ()
        (interactive)
        (let ((start-point (point))
-	     (pts)
-	     (avy-all-windows)
+	     (pts nil)
+	     (avy-all-windows avy-all-windows)
 	     (stay ,stay))
 	 ,@(when pre (list pre))
 	 ,@(when actions
@@ -138,8 +254,6 @@ Example:
 
 ;; copy word
 (avy-custom-action my-avy-mark-lines
-  :stay nil
-  :pre buffer-file-name
   :actions
   ((:all-windows t
 		 :pre (message "%s" "this is run before")
@@ -149,14 +263,15 @@ Example:
   :post
   (progn
     (goto-char (nth 1 pts))
-    (set-mark (nth 0 pts))))
+    (set-mark (nth 0 pts)))
+  :stay nil)
 
 ;; mark lines
 (avy-custom-action my-avy-mark-lines
   :stay nil
   :pre (progn (message "%s" "this is run before"))
   :actions
-  ((:all-windows t
+  (:all-windows t
 		 :pre (message "%s" "this is run before")
 		 :action avy-goto-line
 		 :repeat 2
