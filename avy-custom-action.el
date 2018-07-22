@@ -44,7 +44,74 @@ Aborts the actions and executes :after"
   ;; TODO
   )
 
-;;; POSITIONS
+;;; MARKERS
+
+;; Positions are stored as markers. A marker changes its offset from
+;; the beginning of the buffer automatically whenever text is inserted
+;; or deleted, so that it stays with the two characters on either side
+;; of it. If something is inserted at the marker the behaviour can be
+;; modified with `set-marker-insertion-type' to either insert text
+;; before (t) or after (nil, the default). This can be set for each
+;; action.
+
+(defvar avy-custom-action-initial-marker nil
+  "Store marker  before the action is executed.
+Initial marker is not reset until next custom action is run.")
+
+(defvar avy-custom-action-markers nil
+  "Hold marker history.
+Stored markers are not reset until next custom action is run.")
+
+(defun avy-custom-action--store-initial-marker ()
+  "Store the current marker.
+Gets stored in `avy-custom-action-initial-marker'."
+  (setq avy-custom-action-initial-marker
+        (list (cons (point-marker) (selected-window)))))
+
+(defun avy-custom-action--store-marker ()
+  "Store the current marker.
+Gets pushed to `avy-custom-action-markers'."
+  (push (cons (point-marker) (selected-window)) avy-custom-action-markers))
+
+(defun avy-custom-action--goto-marker-in-list (markers index)
+  "Go to marker stored at INDEX in MARKERS."
+  (let ((mrk))
+    (setq mrk (nth index markers))
+    ;; Try to go to to the marker
+    (condition-case nil
+        (progn
+          (let* ((window (cdr mrk))
+                 (frame (window-frame window)))
+            (when (and (frame-live-p frame)
+                       (not (eq frame (selected-frame))))
+              (select-frame-set-input-focus frame))
+            (select-window window)
+            (goto-char (car mrk))))
+      (error "Not able to go to marker %s." mrk))))
+
+(defun avy-custom-action-goto-marker (index &optional reverse)
+  "Go to marker stored at INDEX in `avy-custom-action-marker'.
+Last stored marker has INDEX 0 unless REVERSE is set to t.
+If REVERSE is set to t the first INDEX 0 is the first stored marker."
+  (let ((markers avy-custom-action-marker))
+    (when (= (length markers) 0)
+      (error "No marker stored in `avy-custom-action-markers'."))
+    (when (or (< index 0) (> index (1- (length markers))))
+      (error "Invalid index %s for marker." index))
+    ;; If reserve reserve the index
+    (when reverse
+      (setq index (- (1- (length markers)) index)))
+    ;; Go to the marker
+    (avy-custom-action--goto-marker-in-list markers index)))
+
+(defun avy-custom-action-restore-initial-marker ()
+  "Go to the initial marker."
+  (let ((markers avy-custom-action-initial-marker))
+    (unless (= (length markers) 1)
+      (error "No marker stored in `avy-custom-action-initial-marker'."))
+    (avy-custom-action--goto-marker-in-list markers 0)))
+
+;;; POSITIONS (MARK)
 
 (defvar avy-custom-action-initial-position nil
   "Store position (window and point) before the action is executed.
@@ -103,6 +170,8 @@ If REVERSE is set to t the first INDEX 0 is the first stored position."
       (error "No position stored in `avy-custom-action-initial-position'."))
     (avy-custom-action--goto-position-in-list positions 0)))
 
+
+
 ;;; HANDLERS
 
 (defun avy-custom-action--handle-abort ()
@@ -134,113 +203,111 @@ If actions aborted process the post keywords."
 
 (defun avy-custom-action--process-keywords-recursively())
 
-(defun avy-custom-action--process (plist)
-  "Process each valid keyword found in plist ARGS."
-  (declare (indent 1))
+(defun avy-custom-action--process-keywords (plist)
+  "Process each valid keyword found in PLIST."
   (unless (listp plist)
     (error "Argument used is not a list."))
   (when (null (plist-get plist :actions))
-    (error "The :actions keyword is mandatory."))
-  (setq avy-custom-action-plist plist)
-  (setq avy-custom-action-plist plist)
+    (error ":actions keyword is mandatory."))
+  (setq avy-custom-action-keywords-plist plist)
   (avy-custom-action--process-pre (plist))
   (avy-custom-action--process-actions (plist))
-  (avy-custom-action--process-post (plist))
-
-  
-    (let ((keyword (car plist))
-           (arg (cadr plist))
-           (rest (cddr plist)))
-      (unless (keywordp keyword)
-        (error (format "%s is not a keyword" keyword)))
-      (let* ((handler (concat "use-package-handler/" (symbol-name keyword)))
-             (handler-sym (intern handler)))
-        (if (functionp handler-sym)
-            (funcall handler-sym name keyword arg rest state)
-          (use-package-error
-           (format "Keyword handler not defined: %s" handler))))))
-  
-  ;; Set up lexical bound variables
-  
-  ;; for each keyword in avy-custom-action-keywords
-  ;;   process keyword
-  ;;   if not :actions keyword > signal error
+  (avy-custom-action--process-post (plist)))
 
 ;;;; Pre
 
-(defun avy-custom-action--process-pre (args)
-  "Process each valid keyword found in plist ARGS."
-  
-  ;; for each keyword in avy-custom-action-keywords
-  ;;   process keyword
-  ;;   if :actions proess
-  )
+(defun avy-custom-action--process-pre (plist)
+  "Process each valid keyword for :pre found in PLIST."
+  (let ((pre (plist-get avy-custom-action-keywords :pre)))
+    (dolist (keyword pre)
+      (let ((body (plist-get plist keyword)))
+        ;; If the current keyword was found call the processor
+        (when body
+          (let* ((processor (concat "avy-custom-action--process-pre:" (symbol-name keyword)))
+                 (processor-sym (intern processor)))
+            (if (functionp processor-sym)
+                (funcall processor-sym keyword body)
+              (error (format "Keyword processor not defined: %s" processor)))))))))
 
 ;;;;; :before
 
-(defun avy-custom-action--process:before (arg)
-  "Process :before keyword ARGuments.
-And return "
-  )
+(defun avy-custom-action--process-pre:before (keyword body)
+  "Eval BODY."
+  (condition-case nil
+      (eval body)
+    (error (format "Not able to eval body used for (:pre) :%s" keyword))))
 
 ;;;; Actions
 
-(defun avy-custom-action--process-actions (args)
+(defun avy-custom-action--process-actions (plist)
   "Process each valid keyword found in plist ARGS."
   (save-mark-and-excursion
+    (let ((actions (plist-get plist :actions)))
+      ;; Process each action
+      (dolist (action actions)
+        (let ((pre (plist-get avy-custom-action-keywords :pre)))
+          (dolist (keyword pre)
+            (let ((body (plist-get plist keyword)))
+              ;; If the current keyword was found call the processor
+              (when body
+                (let* ((processor (concat "avy-custom-action--process-pre:" (symbol-name keyword)))
+                       (processor-sym (intern processor)))
+                  (if (functionp processor-sym)
+                      (funcall processor-sym keyword body)
+                    (error (format "Keyword processor not defined: %s" processor))))))))))))
 
-    )
+(defun avy-custom-action--process-action (args)
+  "Process each valid keyword found in plist ARGS."
+
   )
 
 ;;;;; :actions :all-windows
 
-(defun avy-custom-action--process:actions:all-windows (arg)
+(defun avy-custom-action--process-action:all-windows (arg)
   )
 
 ;;;;; :actions :style
 
-(defun avy-custom-action--process:actions:style (arg)
+(defun avy-custom-action--process-action:style (arg)
   )
 
 ;;;;; :action :before
 
-(defun avy-custom-action--process:actions:before (arg)
+(defun avy-custom-action--process-action:before (arg)
   )
 
 ;;;;; :actions :repeat
 
-(defun avy-custom-action--process:actions:repeat (arg)
+(defun avy-custom-action--process-action:repeat (arg)
   )
 
 ;;;;; :actions :action
 
-(defun avy-custom-action--process:actions:action (arg)
+(defun avy-custom-action--process-action:action (arg)
   )
 
 ;;;;; :actions :after
 
-(defun avy-custom-action--process:actions:after (arg)
+(defun avy-custom-action--process-action:after (arg)
   )
 
 ;;;;; :actions :store
 
-(defun avy-custom-action--process:actions:store (arg)
+(defun avy-custom-action--process-action:store (arg)
   )
 
 ;;;; Post
 
-(defun avy-custom-action--process-post (args)
-  "Process each valid keyword found in plist ARGS."
-  )
+(defun avy-custom-action--process-post (plist))
 
 ;;;;; :after
 
-(defun avy-custom-action--process:after (arg)
+(defun avy-custom-action--process-post:after (arg)
   )
 
 ;;;;; :goto
 
-(defun avy-custom-action--process:goto (arg)
+(defun avy-custom-action--process-post:goto (arg)
   )
 
 ;;; MAIN
